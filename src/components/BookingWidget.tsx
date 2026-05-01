@@ -98,41 +98,43 @@ export function BookingWidget() {
   const isPhoneValid = phone.replace(/\D/g, "").length === 10;
   const isFormValid = !!dropoff && !!selectedCar && distance > 0 && isPhoneValid;
 
-  const handleConfirmBooking = async () => {
+  const handleConfirmBooking = () => {
     if (!isFormValid) {
       alert(t.alertFillFields);
       return;
     }
 
     setBookingLoading(true);
-    try {
-      await addDoc(bookingsCollection, {
-        pickup,
-        dropoff,
-        tripType,
-        distance: totalKm,
-        carName: selectedCar!.name,
-        fare: estimatedFare,
-        phone,
-        timestamp: serverTimestamp(),
-      });
 
-      // Construct WhatsApp message
-      const message = `*New Booking Request - ${t.brandName}*%0A%0A*Route:* ${pickup} to ${dropoff}%0A*Type:* ${tripType === 'one-way' ? t.oneWay : t.roundTrip}%0A*Distance:* ${totalKm} km%0A*Car:* ${selectedCar!.name} (${selectedCar!.color})%0A*Est. Fare:* ₹${estimatedFare}%0A*Customer Phone:* ${phone}`;
+    // Fire database write in the background (don't await) to prevent blocking the redirect
+    addDoc(bookingsCollection, {
+      pickup,
+      dropoff,
+      tripType,
+      distance: totalKm,
+      carName: selectedCar!.name,
+      fare: estimatedFare,
+      phone,
+      timestamp: serverTimestamp(),
+    }).catch(error => {
+      console.error("Booking DB error (ignored for UX):", error);
+    });
 
-      const waLink = `https://wa.me/${WHATSAPP_NUMBER}?text=${message}`;
-      window.open(waLink, "_blank");
+    // Construct WhatsApp message
+    const message = `*New Booking Request - ${t.brandName}*%0A%0A*Route:* ${pickup} to ${dropoff}%0A*Type:* ${tripType === 'one-way' ? t.oneWay : t.roundTrip}%0A*Distance:* ${totalKm} km%0A*Car:* ${selectedCar!.name} (${selectedCar!.color})%0A*Est. Fare:* ₹${estimatedFare}%0A*Customer Phone:* ${phone}`;
+    
+    const waLink = `https://wa.me/${WHATSAPP_NUMBER}?text=${message}`;
 
-      // Reset
-      setDropoff("");
-      setPhone("");
-      setDistance(0);
-    } catch (error) {
-      console.error("Booking error:", error);
-      alert(t.alertBookingFailed);
-    } finally {
-      setBookingLoading(false);
-    }
+    // Redirect immediately (synchronously avoids mobile popup blockers)
+    window.location.href = waLink;
+
+    // Reset
+    setDropoff("");
+    setPhone("");
+    setDistance(0);
+    
+    // Slight delay to remove loading state so user sees redirect happening
+    setTimeout(() => setBookingLoading(false), 1000);
   };
 
   return (
