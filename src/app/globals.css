@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-gold: #D4AF37;
+  --color-gold-hover: #b8962c;
+  --color-dark-bg: #000000;
+  --color-dark-card: #111111;
+  --color-dark-border: #333333;
+}
+
+:root {
+  --background: #000000;
+  --foreground: #ffffff;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
